@@ -15,7 +15,7 @@ const PollHistory: React.FC<PollHistoryProps> = ({ onBack }) => {
 
   const fetchPollHistory = async () => {
     try {
-      const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
+      const serverUrl = (window as any).ENV?.REACT_APP_SERVER_URL || process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
       const response = await fetch(`${serverUrl}/api/poll-history`);
       const data = await response.json();
       setPollHistory(data.history || []);

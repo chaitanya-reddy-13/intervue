@@ -45,7 +45,7 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   const [isKickedOut, setIsKickedOut] = useState(false);
 
   useEffect(() => {
-    const serverUrl = process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
+    const serverUrl = (window as any).ENV?.REACT_APP_SERVER_URL || process.env.REACT_APP_SERVER_URL || 'http://localhost:5000';
     const newSocket = io(serverUrl, {
       transports: ['websocket', 'polling']
     });
