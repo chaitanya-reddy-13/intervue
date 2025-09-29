@@ -20,10 +20,10 @@ const POLL_TIMEOUT = parseInt(process.env.POLL_TIMEOUT) || 60000; // 60 seconds
 app.use(cors());
 app.use(express.json());
 
-// Data storage (in production, use a database)
-let currentPoll = null;
-let students = new Map(); // socketId -> student info
-let pollHistory = [];
+// ✅ Root route (for Render health check)
+app.get("/", (req, res) => {
+  res.send("✅ Polling backend is running on Render!");
+});
 
 // Routes
 app.get('/api/health', (req, res) => {
@@ -37,6 +37,11 @@ app.get('/api/current-poll', (req, res) => {
 app.get('/api/poll-history', (req, res) => {
   res.json({ history: pollHistory });
 });
+
+// Data storage (in production, use a database)
+let currentPoll = null;
+let students = new Map(); // socketId -> student info
+let pollHistory = [];
 
 // Socket.IO connection handling
 io.on('connection', (socket) => {
@@ -57,7 +62,7 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // If there's an active poll, end it first (teacher can always create new polls)
+    // If there's an active poll, end it first
     if (currentPoll && currentPoll.active) {
       endPoll();
     }
@@ -79,7 +84,6 @@ io.on('connection', (socket) => {
     });
 
     console.log('Poll created successfully:', currentPoll.question);
-    console.log('Emitting newPoll event to all clients');
     io.emit('newPoll', currentPoll);
     io.emit('studentsUpdate', Array.from(students.values()));
 
@@ -92,7 +96,7 @@ io.on('connection', (socket) => {
     }, timeLimit);
   });
 
-  // Student joins with name
+  // Student joins
   socket.on('joinAsStudent', (data) => {
     const { name } = data;
     
@@ -101,7 +105,6 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Check if name is already taken
     const existingStudent = Array.from(students.values()).find(s => s.name === name.trim());
     if (existingStudent) {
       socket.emit('error', { message: 'Name already taken' });
@@ -155,10 +158,8 @@ io.on('connection', (socket) => {
 
     console.log(`${student.name} answered:`, currentPoll.options[optionIndex].text);
 
-    // Update student status
     io.emit('studentsUpdate', Array.from(students.values()));
     
-    // Send updated results to everyone
     io.emit('pollResults', {
       id: currentPoll.id,
       question: currentPoll.question,
@@ -166,19 +167,16 @@ io.on('connection', (socket) => {
       totalVotes: currentPoll.answers.size,
       active: currentPoll.active
     });
-
-    // Don't auto-end poll when all students answer - let teacher control when to end
-    // Poll will end automatically after time limit or when teacher manually ends it
   });
 
-  // Teacher requests to end poll
+  // Teacher ends poll
   socket.on('endPoll', () => {
     if (currentPoll && currentPoll.createdBy === socket.id) {
       endPoll();
     }
   });
 
-  // Remove student (teacher only)
+  // Remove student
   socket.on('removeStudent', (data) => {
     const { studentId } = data;
     const studentToRemove = Array.from(students.values()).find(s => s.id === studentId);
@@ -191,7 +189,7 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Chat functionality
+  // Chat messages
   socket.on('sendMessage', (data) => {
     const { message, isTeacher } = data;
     const student = students.get(socket.id);
@@ -207,11 +205,10 @@ io.on('connection', (socket) => {
     io.emit('newMessage', chatMessage);
   });
 
-  // Handle disconnection
+  // Disconnect
   socket.on('disconnect', () => {
     console.log('Client disconnected:', socket.id);
     
-    // Remove student if they were connected
     if (students.has(socket.id)) {
       const student = students.get(socket.id);
       students.delete(socket.id);
@@ -222,11 +219,6 @@ io.on('connection', (socket) => {
 });
 
 // Helper functions
-function canCreateNewPoll() {
-  if (!currentPoll) return true;
-  return !currentPoll.active || allStudentsAnswered();
-}
-
 function allStudentsAnswered() {
   if (!currentPoll || students.size === 0) return false;
   return Array.from(students.values()).every(student => student.hasAnswered);
@@ -238,7 +230,6 @@ function endPoll() {
   currentPoll.active = false;
   currentPoll.endTime = Date.now();
   
-  // Add to history
   pollHistory.push({
     ...currentPoll,
     answers: Object.fromEntries(currentPoll.answers)
@@ -257,5 +248,5 @@ function endPoll() {
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`); 
 });
