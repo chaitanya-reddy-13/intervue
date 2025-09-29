@@ -1,0 +1,16 @@
+# Backend Environment Variables (.env file in backend directory)
+PORT=5000
+NODE_ENV=development
+CORS_ORIGIN=http://localhost:3000
+POLL_TIMEOUT=60000
+
+# Frontend Environment Variables (Set in deployment platform)
+REACT_APP_SERVER_URL=http://localhost:5000
+
+# Production Example:
+# Backend:
+# NODE_ENV=production
+# CORS_ORIGIN=https://your-frontend-domain.netlify.app
+# 
+# Frontend:
+# REACT_APP_SERVER_URL=https://your-backend-domain.herokuapp.com
